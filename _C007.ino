@@ -6,7 +6,7 @@
 #define CPLUGIN_ID_007         7
 #define CPLUGIN_NAME_007       "Emoncms"
 
-boolean CPlugin_007(byte function, struct EventStruct *event)
+boolean CPlugin_007(byte function, struct EventStruct *event, String& string)
 {
   boolean success = false;
 
@@ -15,7 +15,6 @@ boolean CPlugin_007(byte function, struct EventStruct *event)
     case CPLUGIN_PROTOCOL_ADD:
       {
         Protocol[++protocolCount].Number = CPLUGIN_ID_007;
-        strcpy_P(Protocol[protocolCount].Name, PSTR(CPLUGIN_NAME_007));
         Protocol[protocolCount].usesMQTT = false;
         Protocol[protocolCount].usesAccount = false;
         Protocol[protocolCount].usesPassword = true;
@@ -23,6 +22,12 @@ boolean CPlugin_007(byte function, struct EventStruct *event)
         break;
       }
 
+    case CPLUGIN_GET_DEVICENAME:
+      {
+        string = F(CPLUGIN_NAME_007);
+        break;
+      }
+      
     case CPLUGIN_PROTOCOL_SEND:
       {
         char log[80];
@@ -30,7 +35,7 @@ boolean CPlugin_007(byte function, struct EventStruct *event)
         char host[20];
         sprintf_P(host, PSTR("%u.%u.%u.%u"), Settings.Controller_IP[0], Settings.Controller_IP[1], Settings.Controller_IP[2], Settings.Controller_IP[3]);
 
-        sprintf_P(log, PSTR("%s%s"), "HTTP : connecting to ", host);
+        sprintf_P(log, PSTR("%s%s using port %u"), "HTTP : connecting to ", host,Settings.ControllerPort);
         addLog(LOG_LEVEL_DEBUG, log);
         if (printToWeb)
         {
@@ -48,6 +53,7 @@ boolean CPlugin_007(byte function, struct EventStruct *event)
             printWebString += F("connection failed<BR>");
           return false;
         }
+        statusLED(true);        
         if (connectionFailures)
           connectionFailures--;
 
@@ -75,6 +81,21 @@ boolean CPlugin_007(byte function, struct EventStruct *event)
             postDataStr += event->idx + 1;
             postDataStr += ":";
             postDataStr += String(UserVar[event->BaseVarIndex + 1]);
+            postDataStr += "}";
+            break;
+          case SENSOR_TYPE_TEMP_HUM_BARO:
+            postDataStr += F("{field");
+            postDataStr += event->idx;
+            postDataStr += ":";
+            postDataStr += String(UserVar[event->BaseVarIndex]);
+            postDataStr += F(",field");
+            postDataStr += event->idx + 1;
+            postDataStr += ":";
+            postDataStr += String(UserVar[event->BaseVarIndex + 1]);
+            postDataStr += F(",field");
+            postDataStr += event->idx + 2;
+            postDataStr += ":";
+            postDataStr += String(UserVar[event->BaseVarIndex + 2]);
             postDataStr += "}";
             break;
           case SENSOR_TYPE_SWITCH:

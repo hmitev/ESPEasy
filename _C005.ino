@@ -6,7 +6,7 @@
 #define CPLUGIN_ID_005         5
 #define CPLUGIN_NAME_005       "OpenHAB MQTT"
 
-boolean CPlugin_005(byte function, struct EventStruct *event)
+boolean CPlugin_005(byte function, struct EventStruct *event, String& string)
 {
   boolean success = false;
 
@@ -15,7 +15,6 @@ boolean CPlugin_005(byte function, struct EventStruct *event)
     case CPLUGIN_PROTOCOL_ADD:
       {
         Protocol[++protocolCount].Number = CPLUGIN_ID_005;
-        strcpy_P(Protocol[protocolCount].Name, PSTR(CPLUGIN_NAME_005));
         Protocol[protocolCount].usesMQTT = true;
         Protocol[protocolCount].usesAccount = true;
         Protocol[protocolCount].usesPassword = true;
@@ -23,13 +22,19 @@ boolean CPlugin_005(byte function, struct EventStruct *event)
         break;
       }
 
+    case CPLUGIN_GET_DEVICENAME:
+      {
+        string = F(CPLUGIN_NAME_005);
+        break;
+      }
+      
     case CPLUGIN_PROTOCOL_TEMPLATE:
       {
         strcpy_P(Settings.MQTTsubscribe, PSTR("/%sysname%/#"));
         strcpy_P(Settings.MQTTpublish, PSTR("/%sysname%/%tskname%/%valname%"));
         break;
       }
-      
+
     case CPLUGIN_PROTOCOL_RECV:
       {
         // Split topic into array
@@ -46,16 +51,27 @@ boolean CPlugin_005(byte function, struct EventStruct *event)
         }
         topicSplit[count] = tmpTopic;
 
-        String cmd = topicSplit[1];
+        String cmd = "";
         struct EventStruct TempEvent;
-        TempEvent.Par1 = topicSplit[2].toInt();
-        TempEvent.Par2 = event->String2.toFloat();
+
+        if (topicSplit[1] == "cmd")
+        {
+          cmd = event->String2;
+          parseCommandString(&TempEvent, cmd);
+        }
+        else
+        {
+          cmd = topicSplit[1];
+          TempEvent.Par1 = topicSplit[2].toInt();
+          TempEvent.Par2 = event->String2.toFloat();
+        }
         PluginCall(PLUGIN_WRITE, &TempEvent, cmd);
         break;
       }
 
     case CPLUGIN_PROTOCOL_SEND:
       {
+        statusLED(true);
         // MQTT publish structure:
         // /<unit name>/<task name>/<value name>
 
@@ -86,15 +102,33 @@ boolean CPlugin_005(byte function, struct EventStruct *event)
             break;
           case SENSOR_TYPE_TEMP_HUM:
           case SENSOR_TYPE_TEMP_BARO:
-            String tmppubname = pubname;
-            tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[0]);
-            value = String(UserVar[event->BaseVarIndex]);
-            MQTTclient.publish(tmppubname, value);
-            tmppubname = pubname;
-            tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[1]);
-            value = String(UserVar[event->BaseVarIndex + 1]);
-            MQTTclient.publish(tmppubname, value);
-            break;
+            {
+              String tmppubname = pubname;
+              tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[0]);
+              value = String(UserVar[event->BaseVarIndex]);
+              MQTTclient.publish(tmppubname, value);
+              tmppubname = pubname;
+              tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[1]);
+              value = String(UserVar[event->BaseVarIndex + 1]);
+              MQTTclient.publish(tmppubname, value);
+              break;
+            }
+          case SENSOR_TYPE_TEMP_HUM_BARO:
+            {
+              String tmppubname = pubname;
+              tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[0]);
+              value = String(UserVar[event->BaseVarIndex]);
+              MQTTclient.publish(tmppubname, value);
+              tmppubname = pubname;
+              tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[1]);
+              value = String(UserVar[event->BaseVarIndex + 1]);
+              MQTTclient.publish(tmppubname, value);
+              tmppubname = pubname;
+              tmppubname.replace("%valname%", ExtraTaskSettings.TaskDeviceValueNames[2]);
+              value = String(UserVar[event->BaseVarIndex + 2]);
+              MQTTclient.publish(tmppubname, value);
+              break;
+            }
         }
 
       }

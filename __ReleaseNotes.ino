@@ -1,3 +1,114 @@
+// R82 26-02-2016
+// Experimental support for Domoticz MQTT protocol using actuator devices
+//   currently limited to On/Off switches and one channel Dimmers and only build-in GPIO's
+// Use parseCommandString in Webserver handle_control
+// Added option to use plugin commands in tools/commands
+// Display flash size in kB.
+// Restructured main loop
+// Changed sensor timer scheduling, adjust with message delay to spread readings, prevent bursts
+// Removed protocol.name from global memory struct to save RAM
+// Added global system timers
+// Added "LongPulse" commands for build-in GPIO, MCP23017, PCF8574 and PME, using non blocking system timers (inspired by chunter1)
+
+// R81 23-02-2016
+// Added SSDP custom version that uses much less RAM than default library, disabled by default, can be enabled in tools/advanced (contributed by mneuron)
+
+// R80 17-02-2016
+// Added logging controller TCP port
+// Bugfix, set default task timer to main delay if no value entered.
+// Added support for all commands on OpenHAB MQTT, using "<system name>/cmd" topic and the message contains the entire command.
+// Added Wifi signal strength reporting using the System Info device
+// Added network traffic indication to Wifi status led
+
+// R79 16-02-2016
+// Bugfix: I2C Scanner mentions PCA9685 as possible device for address 0x40
+// Added missing pulse feature for PCF8574
+// Added Wifi status LED
+// Added option to send boot state on Switch Input device
+// Added option to use GPIO-1 and GPIO-3 for other purposes than Serial (must disable serial in tools/advanced!)
+// Added individual timers per task
+
+// R78 06-02-2016
+// Bugfix for PCF8574 plugin, could not address PCF8574A chip types
+
+// R77 04-02-2016
+// Bugfix PN532, code cleanup
+//  The PN532 will not work properly with the current ESP Arduino Core 2.0.0. (!)
+//  Connect the PN532 RSTPDN pin to a GPIO port and configure this in the device settings as reset pin
+//  It will likely reset the PN532 several times a day.
+//  Best we can get so far. May be fixed in Arduino ESP core 2.1.0
+
+// R76 31-01-2016
+// Added retry to PN532 init step
+
+// R75 31-01-2016
+// Fixed a bug for generic http url request variables that needed URLEncoding
+// Fixed too aggresive reset action, PN532 now only resets after three consecutive read errors.
+
+// R74 30-01-2016
+// Fixed a bug where using both controller IP and (DNS) hostname leads to unwanted behavior
+//   more specifically if there is confusion between ESP hostname and controller hostname
+//   now you have to select location by IP or DNS and can't enter both fields simultaniously
+// Fixed a bug for RFID plugins that provide long values to the controller plugin, did not work for the generic http controller plugin
+
+// R73 28-01-2016
+// Removed flashcheck (did not prove much) and many other debug commands
+// Update PN532 plugin, should work better now. And added optional reset GPIO pin.
+
+// R72 23-01-2016
+// Added flashcheck <start>,<end> command (simple read check)
+
+// R71 23-01-2016
+// Changed DHT nul reading logic
+// Added connect failure check in MQTT protocol
+// Added more info on 'flashdump' serial command
+// Factory reset erases entire flash except the sketch and zero fills 64k SPIFFS block
+// System halts with error message if no SPIFFS area set.
+
+// R70 22-01-2016
+// Avoid reporting DHT nul readings.
+// Changed timing SI7021 (contributed by Hallard)
+
+// R69 20-01-2016
+// Cosmetic: removed last empty table row in device edit screen
+// Added help button to firmware upload
+// Added delay to DHT sensor
+// Removed interrupt blocking from DHT sensor to avoid Wifi/Network handling issues in the ESP core
+// Removed interrupt blocking from Dallas sensor to avoid Wifi/Network handling issues in the ESP core
+// Moved UDP check from main loop to background routine
+// Webgui now reports ESP.getFlashChipRealSize()
+// Added detection of missing BMP085 sensor during init
+// Added option to reset target device when the Ser2Net plugin has initialized.
+
+// R68 17-01-2016
+// Changed UDP logging
+// Added OTA update using bin file upload through the ESP Easy webgui (NOT from arduino IDE!)
+//   THIS WILL ONLY WORK ON MODULES WITH MORE THAN 512K FLASH, like the ESP12E modules!
+
+// R67 16-01-2016
+// Added plugin for BME280 Temperature/Humidity/Barometric pressure sensor
+
+// R66 16-01-2016
+// Added plugin for INA219 voltage & current sensor
+// Fixed LCD/OLED padding and now it should actually work in all cases...
+
+// R65 15-01-2016
+// Changed UDP transmit delays
+// Fixed padding feature that broke the option to skip empty lines for local display
+// Added system info plugin (single value device type)
+// Added some system info to http json request output
+
+// R64 14-01-2016
+// Experimental: Added simple json interface to retrieve sensor data using http
+// Experimental: Prepare tasks for remote data feed (Work in progress...)
+// Added %uptime% as variable for display
+// Added padding to LCD/OLED display
+// Added support for local button to turn on LCD/OLED display with configurable timeout
+// Changed: no system time displayed when NTP is disabled
+// Added protocol option "Standalone" for units without a controller
+// Fixed UNIT_MAX in node list
+// Added boot config for GPIO pin states
+
 // R63 10-01-2016
 // Added Wifi connect setup 'wizard' using captive portal
 // Enabled formula for PME plugin

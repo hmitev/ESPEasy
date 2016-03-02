@@ -18,6 +18,7 @@ LiquidCrystal_I2C *lcd;
 boolean Plugin_012(byte function, struct EventStruct *event, String& string)
 {
   boolean success = false;
+  static byte displayTimer = 0;
 
   switch (function)
   {
@@ -33,6 +34,7 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
         Device[deviceCount].FormulaOption = false;
         Device[deviceCount].ValueCount = 0;
         Device[deviceCount].SendDataOption = false;
+        Device[deviceCount].TimerOption = true;
         break;
       }
 
@@ -52,12 +54,12 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
       {
         byte choice = Settings.TaskDevicePluginConfig[event->TaskIndex][0];
         int optionValues[16];
-        for (byte x=0; x < 17; x++)
+        for (byte x = 0; x < 17; x++)
           if (x < 8)
             optionValues[x] = 0x20 + x;
           else
             optionValues[x] = 0x30 + x;
-          
+
         string += F("<TR><TD>I2C Address:<TD><select name='plugin_012_adr'>");
         for (byte x = 0; x < 16; x++)
         {
@@ -67,7 +69,7 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
           if (choice == optionValues[x])
             string += F(" selected");
           string += ">";
-          string += String(optionValues[x],HEX);
+          string += String(optionValues[x], HEX);
           string += F("</option>");
         }
         string += F("</select>");
@@ -106,6 +108,14 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
           string += F("'>");
         }
 
+        string += F("<TR><TD>Display button:<TD>");
+        addPinSelect(false, string, "taskdevicepin3", Settings.TaskDevicePin3[event->TaskIndex]);
+
+        char tmpString[128];
+
+        sprintf_P(tmpString, PSTR("<TR><TD>Display Timeout:<TD><input type='text' name='plugin_12_timer' value='%u'>"), Settings.TaskDevicePluginConfig[event->TaskIndex][2]);
+        string += tmpString;
+
         success = true;
         break;
       }
@@ -116,12 +126,14 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
         Settings.TaskDevicePluginConfig[event->TaskIndex][0] = plugin1.toInt();
         String plugin2 = WebServer.arg("plugin_012_size");
         Settings.TaskDevicePluginConfig[event->TaskIndex][1] = plugin2.toInt();
-        
+        String plugin3 = WebServer.arg("plugin_12_timer");
+        Settings.TaskDevicePluginConfig[event->TaskIndex][2] = plugin3.toInt();
+
         char deviceTemplate[4][80];
         for (byte varNr = 0; varNr < 4; varNr++)
         {
           char argc[25];
-          String arg = "Plugin_012_template";
+          String arg = F("Plugin_012_template");
           arg += varNr + 1;
           arg.toCharArray(argc, 25);
           String tmpString = WebServer.arg(argc);
@@ -134,48 +146,77 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
         success = true;
         break;
       }
-      
+
     case PLUGIN_INIT:
       {
         if (!lcd)
+        {
+          byte row = 2;
+          byte col = 16;
+          if (Settings.TaskDevicePluginConfig[event->TaskIndex][1] == 2)
           {
-            byte row=2;
-            byte col=16;
-            if (Settings.TaskDevicePluginConfig[event->TaskIndex][1] == 2)
-            {
-              row=4;
-              col=20;
-            }
-          lcd = new LiquidCrystal_I2C(Settings.TaskDevicePluginConfig[event->TaskIndex][0], col, row);
+            row = 4;
+            col = 20;
           }
+          lcd = new LiquidCrystal_I2C(Settings.TaskDevicePluginConfig[event->TaskIndex][0], col, row);
+        }
         // Setup LCD display
         lcd->init();                      // initialize the lcd
         lcd->backlight();
         lcd->print("ESP Easy");
+        displayTimer = Settings.TaskDevicePluginConfig[event->TaskIndex][2];
+        if (Settings.TaskDevicePin3[event->TaskIndex] != -1)
+          pinMode(Settings.TaskDevicePin3[event->TaskIndex], INPUT_PULLUP);
         success = true;
         break;
       }
-      
+
+    case PLUGIN_TEN_PER_SECOND:
+      {
+        if (Settings.TaskDevicePin3[event->TaskIndex] != -1)
+        {
+          if (!digitalRead(Settings.TaskDevicePin3[event->TaskIndex]))
+          {
+            lcd->backlight();
+            displayTimer = Settings.TaskDevicePluginConfig[event->TaskIndex][2];
+          }
+        }
+        break;
+      }
+
+    case PLUGIN_ONCE_A_SECOND:
+      {
+        if ( displayTimer > 0)
+        {
+          displayTimer--;
+          if (displayTimer == 0)
+            lcd->noBacklight();
+        }
+        break;
+      }
+
     case PLUGIN_READ:
       {
         char deviceTemplate[4][80];
         LoadCustomTaskSettings(event->TaskIndex, (byte*)&deviceTemplate, sizeof(deviceTemplate));
 
-        byte row=2;
-        byte col=16;
+        byte row = 2;
+        byte col = 16;
         if (Settings.TaskDevicePluginConfig[event->TaskIndex][1] == 2)
-          {
-           row=4;
-           col=20;
-          }
-          
+        {
+          row = 4;
+          col = 20;
+        }
+
         for (byte x = 0; x < row; x++)
         {
           String tmpString = deviceTemplate[x];
-          String newString = parseTemplate(tmpString, col);
-          lcd->setCursor(0, x);
-          if (newString != "")
+          if (tmpString.length())
+          {
+            String newString = parseTemplate(tmpString, col);
+            lcd->setCursor(0, x);
             lcd->print(newString);
+          }
         }
         success = false;
         break;
@@ -187,7 +228,7 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
         int argIndex = tmpString.indexOf(',');
         if (argIndex)
           tmpString = tmpString.substring(0, argIndex);
-        if (tmpString.equalsIgnoreCase("LCD"))
+        if (tmpString.equalsIgnoreCase(F("LCD")))
         {
           success = true;
           argIndex = string.lastIndexOf(',');
@@ -195,16 +236,16 @@ boolean Plugin_012(byte function, struct EventStruct *event, String& string)
           lcd->setCursor(event->Par2 - 1, event->Par1 - 1);
           lcd->print(tmpString.c_str());
         }
-        if (tmpString.equalsIgnoreCase("LCDCMD"))
+        if (tmpString.equalsIgnoreCase(F("LCDCMD")))
         {
           success = true;
           argIndex = string.lastIndexOf(',');
-          tmpString = string.substring(argIndex+1);
-          if (tmpString.equalsIgnoreCase("Off"))
+          tmpString = string.substring(argIndex + 1);
+          if (tmpString.equalsIgnoreCase(F("Off")))
             lcd->noBacklight();
-          else if (tmpString.equalsIgnoreCase("On"))
+          else if (tmpString.equalsIgnoreCase(F("On")))
             lcd->backlight();
-          else if (tmpString.equalsIgnoreCase("Clear"))
+          else if (tmpString.equalsIgnoreCase(F("Clear")))
             lcd->clear();
         }
         break;

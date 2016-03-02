@@ -32,6 +32,7 @@ boolean Plugin_022(byte function, struct EventStruct *event, String& string)
         Device[deviceCount].FormulaOption = false;
         Device[deviceCount].ValueCount = 0;
         Device[deviceCount].Custom = true;
+        Device[deviceCount].TimerOption = false;
         break;
       }
 
@@ -52,7 +53,6 @@ boolean Plugin_022(byte function, struct EventStruct *event, String& string)
         if (!Plugin_022_init)
         {
           // default mode is open drain ouput, drive leds connected to VCC
-          Serial.println("PCA Init");
           Plugin_022_writeRegister(PCA9685_MODE1, (byte)0x01); // reset the device
           delay(1);
           Plugin_022_writeRegister(PCA9685_MODE1, (byte)B10100000);  // set up for auto increment
@@ -63,7 +63,7 @@ boolean Plugin_022(byte function, struct EventStruct *event, String& string)
         int argIndex = tmpString.indexOf(',');
         if (argIndex)
           tmpString = tmpString.substring(0, argIndex);
-        if (tmpString.equalsIgnoreCase("PCAPWM"))
+        if (tmpString.equalsIgnoreCase(F("PCAPWM")))
         {
           success = true;
           Plugin_022_Write(event->Par1, event->Par2);

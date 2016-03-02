@@ -27,6 +27,7 @@ boolean Plugin_004(byte function, struct EventStruct *event, String& string)
         Device[deviceCount].FormulaOption = true;
         Device[deviceCount].ValueCount = 1;
         Device[deviceCount].SendDataOption = true;
+        Device[deviceCount].TimerOption = true;
         break;
       }
 
@@ -208,7 +209,7 @@ uint8_t Plugin_004_DS_reset()
 {
   uint8_t r;
   uint8_t retries = 125;
-  noInterrupts();
+  //noInterrupts();
   pinMode(Plugin_004_DallasPin, INPUT);
   do  {  // wait until the wire is high... just in case
     if (--retries == 0) return 0;
@@ -221,7 +222,7 @@ uint8_t Plugin_004_DS_reset()
   delayMicroseconds(40);
   r = !digitalRead(Plugin_004_DallasPin);
   delayMicroseconds(420);
-  interrupts();
+  //interrupts();
   return r;
 }
 
@@ -403,14 +404,14 @@ uint8_t Plugin_004_DS_read_bit(void)
 {
   uint8_t r;
 
-  noInterrupts();
+  //noInterrupts();
   pinMode(Plugin_004_DallasPin, OUTPUT);
   digitalWrite(Plugin_004_DallasPin, LOW);
   delayMicroseconds(3);
   pinMode(Plugin_004_DallasPin, INPUT); // let pin float, pull up will raise
   delayMicroseconds(10);
   r = digitalRead(Plugin_004_DallasPin);
-  interrupts();
+  //interrupts();
   delayMicroseconds(53);
   return r;
 }
@@ -422,20 +423,20 @@ uint8_t Plugin_004_DS_read_bit(void)
 void Plugin_004_DS_write_bit(uint8_t v)
 {
   if (v & 1) {
-    noInterrupts();
+    //noInterrupts();
     digitalWrite(Plugin_004_DallasPin, LOW);
     pinMode(Plugin_004_DallasPin, OUTPUT);
     delayMicroseconds(10);
     digitalWrite(Plugin_004_DallasPin, HIGH);
-    interrupts();
+    //interrupts();
     delayMicroseconds(55);
   } else {
-    noInterrupts();
+    //noInterrupts();
     digitalWrite(Plugin_004_DallasPin, LOW);
     pinMode(Plugin_004_DallasPin, OUTPUT);
     delayMicroseconds(65);
     digitalWrite(Plugin_004_DallasPin, HIGH);
-    interrupts();
+    //interrupts();
     delayMicroseconds(5);
   }
 }

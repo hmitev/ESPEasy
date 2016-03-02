@@ -26,6 +26,7 @@ boolean Plugin_019(byte function, struct EventStruct *event, String& string)
         Device[deviceCount].FormulaOption = false;
         Device[deviceCount].ValueCount = 1;
         Device[deviceCount].SendDataOption = true;
+        Device[deviceCount].TimerOption = false;
         break;
       }
 
@@ -58,7 +59,7 @@ boolean Plugin_019(byte function, struct EventStruct *event, String& string)
           {
             String log = F("PCF  : State ");
             log += state;
-            addLog(LOG_LEVEL_INFO,log);
+            addLog(LOG_LEVEL_INFO, log);
             switchstate[event->TaskIndex] = state;
             UserVar[event->BaseVarIndex] = state;
             event->sensorType = SENSOR_TYPE_SWITCH;
@@ -75,7 +76,8 @@ boolean Plugin_019(byte function, struct EventStruct *event, String& string)
         int argIndex = tmpString.indexOf(',');
         if (argIndex)
           tmpString = tmpString.substring(0, argIndex);
-        if (tmpString.equalsIgnoreCase("PCFGPIO"))
+
+        if (tmpString.equalsIgnoreCase(F("PCFGPIO")))
         {
           success = true;
           Plugin_019_Write(event->Par1, event->Par2);
@@ -88,6 +90,44 @@ boolean Plugin_019(byte function, struct EventStruct *event, String& string)
             printWebString += F("<BR>");
           }
         }
+
+        if (tmpString.equalsIgnoreCase(F("PCFPulse")))
+        {
+          success = true;
+          Plugin_009_Write(event->Par1, event->Par2);
+          delay(event->Par3);
+          Plugin_009_Write(event->Par1, !event->Par2);
+          if (printToWeb)
+          {
+            printWebString += F("PCFGPIO ");
+            printWebString += event->Par1;
+            printWebString += F(" Pulsed for ");
+            printWebString += event->Par3;
+            printWebString += F(" mS<BR>");
+          }
+        }
+
+        if (tmpString.equalsIgnoreCase(F("PCFLongPulse")))
+        {
+          success = true;
+          Plugin_009_Write(event->Par1, event->Par2);
+          setSystemTimer(event->Par3 * 1000, PLUGIN_ID_019, event->Par1, !event->Par2, 0);
+          if (printToWeb)
+          {
+            printWebString += F("PCFGPIO ");
+            printWebString += event->Par1;
+            printWebString += F(" Pulse set for ");
+            printWebString += event->Par3;
+            printWebString += F(" S<BR>");
+          }
+        }
+        
+        break;
+      }
+
+    case PLUGIN_TIMER_IN:
+      {
+        Plugin_019_Write(event->Par1, event->Par2);
         break;
       }
   }
@@ -104,6 +144,8 @@ int Plugin_019_Read(byte Par1)
   byte unit = (Par1 - 1) / 8;
   byte port = Par1 - (unit * 8);
   uint8_t address = 0x20 + unit;
+  if (unit > 7) address += 0x10;
+
   // get the current pin status
   Wire.requestFrom(address, (uint8_t)0x1);
   if (Wire.available())
@@ -124,6 +166,8 @@ boolean Plugin_019_Write(byte Par1, byte Par2)
   byte unit = (Par1 - 1) / 8;
   byte port = Par1 - (unit * 8);
   uint8_t address = 0x20 + unit;
+  if (unit > 7) address += 0x10;
+
   // get the current pin status
   Wire.requestFrom(address, (uint8_t)0x1);
   if (Wire.available())

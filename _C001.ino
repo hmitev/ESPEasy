@@ -6,7 +6,7 @@
 #define CPLUGIN_ID_001         1
 #define CPLUGIN_NAME_001       "Domoticz HTTP"
 
-boolean CPlugin_001(byte function, struct EventStruct *event)
+boolean CPlugin_001(byte function, struct EventStruct *event, String& string)
 {
   boolean success = false;
 
@@ -15,7 +15,6 @@ boolean CPlugin_001(byte function, struct EventStruct *event)
     case CPLUGIN_PROTOCOL_ADD:
       {
         Protocol[++protocolCount].Number = CPLUGIN_ID_001;
-        strcpy_P(Protocol[protocolCount].Name, PSTR(CPLUGIN_NAME_001));
         Protocol[protocolCount].usesMQTT = false;
         Protocol[protocolCount].usesAccount = false;
         Protocol[protocolCount].usesPassword = false;
@@ -23,6 +22,12 @@ boolean CPlugin_001(byte function, struct EventStruct *event)
         break;
       }
 
+    case CPLUGIN_GET_DEVICENAME:
+      {
+        string = F(CPLUGIN_NAME_001);
+        break;
+      }
+      
     case CPLUGIN_PROTOCOL_SEND:
       {
         char log[80];
@@ -30,7 +35,7 @@ boolean CPlugin_001(byte function, struct EventStruct *event)
         char host[20];
         sprintf_P(host, PSTR("%u.%u.%u.%u"), Settings.Controller_IP[0], Settings.Controller_IP[1], Settings.Controller_IP[2], Settings.Controller_IP[3]);
 
-        sprintf_P(log, PSTR("%s%s"), "HTTP : connecting to ", host);
+        sprintf_P(log, PSTR("%s%s using port %u"), "HTTP : connecting to ", host,Settings.ControllerPort);
         addLog(LOG_LEVEL_DEBUG, log);
         if (printToWeb)
         {
@@ -48,6 +53,7 @@ boolean CPlugin_001(byte function, struct EventStruct *event)
             printWebString += F("connection failed<BR>");
           return false;
         }
+        statusLED(true);
         if (connectionFailures)
           connectionFailures--;
 
@@ -77,6 +83,15 @@ boolean CPlugin_001(byte function, struct EventStruct *event)
             url += UserVar[event->BaseVarIndex];
             url += ";0;0;";
             url += UserVar[event->BaseVarIndex + 1];
+            url += ";0";
+            break;
+          case SENSOR_TYPE_TEMP_HUM_BARO:                      // temp + hum + hum_stat + bar + bar_fore, used for BME280
+            url += F("&svalue=");
+            url += UserVar[event->BaseVarIndex];
+            url += ";";
+            url += UserVar[event->BaseVarIndex + 1];
+            url += ";0;";
+            url += UserVar[event->BaseVarIndex + 2];
             url += ";0";
             break;
           case SENSOR_TYPE_SWITCH:
